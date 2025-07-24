@@ -118,6 +118,12 @@ function addMaterialFromSheet(promotionName, promotionId) {
     if (args) {
       payload["track_args"] = args;
     }
+    const requiredFields = ["promotion","name","url_type","ad_text","url","display_url","action_name","cid_flag","p_flag","mid_flag","link_type","opens"];
+    requiredFields.forEach(function(f) {
+      if (payload[f] === undefined || payload[f] === "" || (Array.isArray(payload[f]) && payload[f].length === 0)) {
+        Logger.log("[素材追加] WARN: " + f + " が空です");
+      }
+    });
 
     Logger.log("[素材追加] payload: " + JSON.stringify(payload));
     const options = {
@@ -131,13 +137,20 @@ function addMaterialFromSheet(promotionName, promotionId) {
     };
 
     try {
-      const response = UrlFetchApp.fetch(materialUrl, options);
-      Logger.log("[素材追加] レスポンス (行" + row + "): " + response.getContentText());
-      const resObj = JSON.parse(response.getContentText());
-      if (resObj.error) {
-        ui.alert("素材追加エラー", "APIエラー: " + (resObj.error.message || JSON.stringify(resObj.error)), ui.ButtonSet.OK);
-        throw new Error("素材追加APIエラー: " + (resObj.error.message || JSON.stringify(resObj.error)));
-      }
+        const response = UrlFetchApp.fetch(materialUrl, options);
+        Logger.log("[素材追加] レスポンス (行" + row + "): " + response.getContentText());
+        Logger.log("[素材追加] HTTP status: " + response.getResponseCode());
+        const resObj = JSON.parse(response.getContentText());
+        if (resObj.error) {
+          ui.alert("素材追加エラー", "APIエラー: " + (resObj.error.message || JSON.stringify(resObj.error)), ui.ButtonSet.OK);
+          if (resObj.error.field) {
+            Logger.log("[素材追加] APIエラー field: " + resObj.error.field);
+          }
+          if (resObj.error.field_error) {
+            Logger.log("[素材追加] APIフィールドエラー詳細: " + JSON.stringify(resObj.error.field_error));
+          }
+          throw new Error("素材追加APIエラー: " + (resObj.error.message || JSON.stringify(resObj.error)));
+        }
     } catch (e) {
       Logger.log("[素材追加] エラー (行" + row + "): " + e);
       ui.alert("素材追加エラー", String(e), ui.ButtonSet.OK);
