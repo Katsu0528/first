@@ -1,0 +1,72 @@
+/**
+ * 提携申請登録
+ * @param {string} promotionId - 広告ID
+ */
+function registerPromotionApply(promotionId) {
+  const token = 'agqnoournapf:1kvu9dyv1alckgocc848socw';
+  // メディアIDを直書き（「株式会社OTONARI　テスト」に該当するIDをここにセットしてください）
+  const mediaId = 'mgepkhhm20i8'.trim(); // ←ここを実際のメディアIDに書き換えてください
+
+  if (!mediaId) {
+    const msg = "提携申請に必要なメディアIDが未設定です。";
+    Logger.log(msg);
+    SpreadsheetApp.getUi().alert("エラー", msg, SpreadsheetApp.getUi().ButtonSet.OK);
+    throw new Error(msg);
+  }
+
+  // 既存の提携申請があるかチェック（promotionId, mediaIdで検索）
+  const searchUrl = 'https://otonari-asp.com/api/v1/m/promotion_apply/search?promotion=' + encodeURIComponent(promotionId) + '&media=' + encodeURIComponent(mediaId);
+  const searchOptions = {
+    method: 'get',
+    headers: { 'X-Auth-Token': token },
+    muteHttpExceptions: true
+  };
+  let applyRecord = null;
+  try {
+    const searchResponse = UrlFetchApp.fetch(searchUrl, searchOptions);
+    Logger.log("提携申請検索APIレスポンス: " + searchResponse.getContentText());
+    const searchResult = JSON.parse(searchResponse.getContentText());
+    if (searchResult.records && Array.isArray(searchResult.records) && searchResult.records.length > 0) {
+      Logger.log("既に提携申請済みです（media=" + mediaId + ", promotion=" + promotionId + "）");
+      applyRecord = searchResult.records[0];
+    }
+  } catch (e) {
+    Logger.log("提携申請検索APIエラー: " + e);
+  }
+
+  if (!applyRecord) {
+    // 提携申請登録
+    const payload = {
+      media: mediaId,
+      promotion: promotionId,
+      state: 1 // 承認
+    };
+    Logger.log("提携申請API payload: " + JSON.stringify(payload));
+    const registUrl = 'https://otonari-asp.com/api/v1/m/promotion_apply/regist';
+    const options = {
+      method: 'post',
+      contentType: 'application/json',
+      payload: JSON.stringify(payload),
+      headers: {
+        'X-Auth-Token': token
+      },
+      muteHttpExceptions: true
+    };
+    try {
+      const response = UrlFetchApp.fetch(registUrl, options);
+      Logger.log("提携申請APIレスポンス: " + response.getContentText());
+      const result = JSON.parse(response.getContentText());
+      if (result.error) {
+        SpreadsheetApp.getUi().alert("提携申請エラー", "APIエラー: " + (result.error.message || JSON.stringify(result.error)), SpreadsheetApp.getUi().ButtonSet.OK);
+        throw new Error("提携申請APIエラー: " + (result.error.message || JSON.stringify(result.error)));
+      }
+      applyRecord = result.record;
+    } catch (e) {
+      Logger.log("提携申請APIエラー: " + e);
+      SpreadsheetApp.getUi().alert("提携申請エラー", String(e), SpreadsheetApp.getUi().ButtonSet.OK);
+      throw e;
+    }
+  }
+
+  return applyRecord;
+}
