@@ -91,15 +91,14 @@ function addMaterialFromSheet(promotionName, promotionId) {
     }
     Logger.log("[素材追加] 実際のURL: " + url);
 
-    let cidFlag = 1;
-    if (varRow && varRow[3] !== undefined && varRow[3] !== "") {
-      cidFlag = Number(varRow[3]);
-      if (![0,1,2,3].includes(cidFlag)) cidFlag = 1;
-    }
-    Logger.log("[素材追加] cid_flag: " + cidFlag);
-
     const args = varRow && varRow[2] !== undefined && varRow[2] !== "" ? varRow[2] : "";
     Logger.log("[素材追加] track_args: " + args);
+
+    const hasVars = (args && args !== "") || (urlSuffix && urlSuffix !== "");
+    const cidFlag = hasVars ? 2 : 1;
+    const pFlag = hasVars ? 2 : 1;
+    Logger.log("[素材追加] cid_flag: " + cidFlag);
+    Logger.log("[素材追加] p_flag: " + pFlag);
 
     const payload = {
       promotion: usedPromotionId,
@@ -110,8 +109,8 @@ function addMaterialFromSheet(promotionName, promotionId) {
       display_url: url,
       action_name: adText,
       cid_flag: cidFlag,
-      p_flag: 1,
-      mid_flag: 1,
+      p_flag: pFlag,
+      mid_flag: 0,
       link_type: 0,
       opens: 1
     };
