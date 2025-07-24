@@ -1,0 +1,156 @@
+function addMaterialFromSheet(promotionName, promotionId) {
+  const base = SpreadsheetApp.getActiveSpreadsheet();
+  const inputSheet = base.getSheetByName("入稿用");
+  if (!inputSheet) throw new Error("「入稿用」シートが見つかりません。");
+  const masterSheet = base.getSheetByName("マスタ");
+  if (!masterSheet) throw new Error("「マスタ」シートが見つかりません。");
+  const materialSheet = base.getSheetByName("素材追加");
+  if (!materialSheet) throw new Error("「素材追加」シートが見つかりません。");
+  const varMasterSheet = base.getSheetByName("変数マスタ");
+  if (!varMasterSheet) throw new Error("「変数マスタ」シートが見つかりません。");
+  const ui = SpreadsheetApp.getUi();
+
+  Logger.log("素材追加処理開始");
+
+  // 広告主名取得
+  const advertiserName = inputSheet.getRange("A2").getValue();
+  Logger.log("広告主名: " + advertiserName);
+
+  // 「マスタ」シートで広告主名から広告主ID取得
+  const masterData = masterSheet.getRange(2, 1, masterSheet.getLastRow() - 1, 6).getValues();
+  const advertiserRow = masterData.find(r => r[0] === advertiserName);
+  Logger.log("マスタ広告主検索結果: " + JSON.stringify(advertiserRow));
+  if (!advertiserRow) {
+    const msg = "マスタに広告主が見つかりません: " + advertiserName;
+    Logger.log(msg);
+    ui.alert("エラー", msg, ui.ButtonSet.OK);
+    throw new Error(msg);
+  }
+  const advertiserId = advertiserRow[3];
+  Logger.log("広告主ID: " + advertiserId);
+
+  // 案件名・広告ID
+  let usedPromotionName = promotionName;
+  let usedPromotionId = promotionId;
+
+  if (!usedPromotionName) {
+    usedPromotionName = inputSheet.getRange("B2").getValue();
+    Logger.log("案件名(シートより): " + usedPromotionName);
+  } else {
+    Logger.log("案件名(引数): " + usedPromotionName);
+  }
+
+  if (!usedPromotionName || String(usedPromotionName).trim() === "") {
+    const msg = "案件名が入力されていません。入稿用シートのB2セルに案件名を入力してください。";
+    Logger.log(msg);
+    ui.alert("エラー", msg, ui.ButtonSet.OK);
+    throw new Error(msg);
+  }
+
+  if (!usedPromotionId) {
+    const promotionRow = masterData.find(r => r[4] === usedPromotionName);
+    Logger.log("マスタ案件名検索結果: " + JSON.stringify(promotionRow));
+    if (!promotionRow) {
+      const msg = "マスタに案件名が見つかりません: " + usedPromotionName + "\n入稿用シートのB2セルやマスタシートをご確認ください。";
+      Logger.log(msg);
+      ui.alert("エラー", msg, ui.ButtonSet.OK);
+      throw new Error(msg);
+    }
+    usedPromotionId = promotionRow[5];
+    Logger.log("広告ID(マスタより): " + usedPromotionId);
+  } else {
+    Logger.log("広告ID(引数): " + usedPromotionId);
+  }
+
+  // 変数マスタ情報取得
+  const varMasterData = varMasterSheet.getRange(2, 1, varMasterSheet.getLastRow() - 1, 5).getValues();
+  const varRow = varMasterData.find(r => r[1] == advertiserId);
+  Logger.log("変数マスタ検索結果: " + JSON.stringify(varRow));
+  let urlSuffix = "";
+  if (varRow && varRow[4]) urlSuffix = varRow[4];
+  Logger.log("URL付与変数: " + urlSuffix);
+
+  const token = 'agqnoournapf:1kvu9dyv1alckgocc848socw';
+  const materialUrl = 'https://otonari-asp.com/api/v1/m/promotion_item/regist';
+  let row = 2;
+  let dataFound = false;
+  while (true) {
+    const adText = materialSheet.getRange(row, 1).getValue();
+    const baseUrl = materialSheet.getRange(row, 2).getValue();
+    Logger.log("[素材追加] row: " + row + ", adText: " + adText + ", baseUrl: " + baseUrl);
+    if (!adText) {
+      Logger.log("[素材追加] 行" + row + "は空。ループ終了。");
+      break;
+    }
+
+    dataFound = true;
+
+    let url = baseUrl;
+    if (urlSuffix) {
+      url += urlSuffix;
+    }
+    Logger.log("[素材追加] 実際のURL: " + url);
+
+    let cidFlag = 1;
+    if (varRow && varRow[3] !== undefined && varRow[3] !== "") {
+      cidFlag = Number(varRow[3]);
+      if (![0,1,2,3].includes(cidFlag)) cidFlag = 1;
+    }
+    Logger.log("[素材追加] cid_flag: " + cidFlag);
+
+    const args = varRow && varRow[2] !== undefined && varRow[2] !== "" ? varRow[2] : "";
+    Logger.log("[素材追加] track_args: " + args);
+
+    const payload = {
+      promotion: usedPromotionId,
+      name: adText,
+      url_type: ["via_system"],
+      ad_text: adText,
+      url: url,
+      display_url: url,
+      action_name: adText,
+      cid_flag: cidFlag,
+      p_flag: 1,
+      mid_flag: 1,
+      link_type: 0,
+      opens: 1
+    };
+
+    if (args) {
+      payload["track_args"] = args;
+    }
+
+    Logger.log("[素材追加] payload: " + JSON.stringify(payload));
+    const options = {
+      method: 'post',
+      contentType: 'application/json',
+      payload: JSON.stringify(payload),
+      headers: {
+        'X-Auth-Token': token
+      },
+      muteHttpExceptions: true
+    };
+
+    try {
+      const response = UrlFetchApp.fetch(materialUrl, options);
+      Logger.log("[素材追加] レスポンス (行" + row + "): " + response.getContentText());
+      const resObj = JSON.parse(response.getContentText());
+      if (resObj.error) {
+        ui.alert("素材追加エラー", "APIエラー: " + (resObj.error.message || JSON.stringify(resObj.error)), ui.ButtonSet.OK);
+        throw new Error("素材追加APIエラー: " + (resObj.error.message || JSON.stringify(resObj.error)));
+      }
+    } catch (e) {
+      Logger.log("[素材追加] エラー (行" + row + "): " + e);
+      ui.alert("素材追加エラー", String(e), ui.ButtonSet.OK);
+      throw e;
+    }
+    row++;
+  }
+  if (!dataFound) {
+    const msg = "素材追加シートに追加対象のデータがありません。";
+    Logger.log(msg);
+    ui.alert("エラー", msg, ui.ButtonSet.OK);
+    throw new Error(msg);
+  }
+  Logger.log("素材追加処理終了");
+}
