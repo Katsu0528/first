@@ -99,6 +99,21 @@ function addMaterialFromSheet(promotionName, promotionId) {
     const pFlag = hasVars ? 2 : 1;
     Logger.log("[素材追加] cid_flag: " + cidFlag);
     Logger.log("[素材追加] p_flag: " + pFlag);
+    // 変数展開漏れやフラグの矛盾を検出
+    const leftover = [];
+    if (url.indexOf("[cid]") !== -1) leftover.push("[cid] in url");
+    if (url.indexOf("[p]") !== -1) leftover.push("[p] in url");
+    if (args.indexOf("[cid]") !== -1) leftover.push("[cid] in track_args");
+    if (args.indexOf("[p]") !== -1) leftover.push("[p] in track_args");
+    if (leftover.length > 0) {
+      Logger.log("[素材追加] WARN (行" + row + "): URLやtrack_argsに未展開の変数があります: " + leftover.join(", "));
+    }
+    if (cidFlag === 2 && url.indexOf("[cid]") === -1 && args.indexOf("[cid]") === -1) {
+      Logger.log("[素材追加] WARN (行" + row + "): cid_flag=2 ですが [cid] が見つかりません");
+    }
+    if (pFlag === 2 && url.indexOf("[p]") === -1 && args.indexOf("[p]") === -1) {
+      Logger.log("[素材追加] WARN (行" + row + "): p_flag=2 ですが [p] が見つかりません");
+    }
 
     const payload = {
       promotion: usedPromotionId,
