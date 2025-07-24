@@ -121,7 +121,6 @@ function addMaterialFromSheet(promotionName, promotionId) {
     const requiredFields = ["promotion","name","url_type","ad_text","url","display_url","action_name","cid_flag","p_flag","mid_flag","link_type","opens"];
     requiredFields.forEach(function(f) {
       if (payload[f] === undefined || payload[f] === "" || (Array.isArray(payload[f]) && payload[f].length === 0)) {
-        Logger.log("[素材追加] WARN (行" + row + "): " + f + " が空です");
       }
     });
 
@@ -156,6 +155,7 @@ function addMaterialFromSheet(promotionName, promotionId) {
           }
           throw new Error("素材追加APIエラー: " + (resObj.error.message || JSON.stringify(resObj.error)));
         }
+
     } catch (e) {
       Logger.log("[素材追加] エラー (行" + row + "): " + e);
       ui.alert("素材追加エラー", String(e), ui.ButtonSet.OK);
