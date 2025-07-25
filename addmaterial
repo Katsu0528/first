@@ -1,5 +1,9 @@
+// addMaterialFromSheet: 広告IDと素材情報をシートから取得して素材登録を行う
+
 function addMaterialFromSheet(promotionName, promotionId) {
+  // promotionName, promotionId は省略可能。シートから取得する場合もある
   const base = SpreadsheetApp.getActiveSpreadsheet();
+  // 必要な各シートを取得。存在しなければエラー
   const inputSheet = base.getSheetByName("入稿用");
   if (!inputSheet) throw new Error("「入稿用」シートが見つかりません。");
   const masterSheet = base.getSheetByName("マスタ");
@@ -74,6 +78,7 @@ function addMaterialFromSheet(promotionName, promotionId) {
   const materialUrl = 'https://otonari-asp.com/api/v1/m/promotion_item/regist';
   let row = 2;
   let dataFound = false;
+  // 素材追加シートの行を上から順に処理する
   while (true) {
     const adText = materialSheet.getRange(row, 1).getValue();
     const baseUrl = materialSheet.getRange(row, 2).getValue();
@@ -153,6 +158,7 @@ function addMaterialFromSheet(promotionName, promotionId) {
       muteHttpExceptions: true
     };
 
+    // APIへ素材登録リクエストを送り結果を確認する
     try {
         const response = UrlFetchApp.fetch(materialUrl, options);
         Logger.log("[素材追加] レスポンス (行" + row + "): " + response.getContentText());
@@ -176,11 +182,13 @@ function addMaterialFromSheet(promotionName, promotionId) {
 
     } catch (e) {
       Logger.log("[素材追加] エラー (行" + row + "): " + e);
+      // エラー発生時はログを残してダイアログ表示
       ui.alert("素材追加エラー", String(e), ui.ButtonSet.OK);
       throw e;
     }
     row++;
   }
+  // データが1行も無い場合はエラー
   if (!dataFound) {
     const msg = "素材追加シートに追加対象のデータがありません。";
     Logger.log(msg);
