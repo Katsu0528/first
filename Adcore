@@ -1,8 +1,14 @@
+// AdCoreスクリプト
+// スプレッドシートの入力内容に基づき広告登録や素材追加を実行します
+
+// Google Apps Script のメインエントリ関数
+// 広告登録および素材追加の各処理を起動します
 function AdCore() {
   try {
     Logger.log("実行開始");
     const base = SpreadsheetApp.getActiveSpreadsheet();
 
+    // スプレッドシートの各タブを取得し存在を確認する
     // シート取得＆nullチェック
     const inputSheet = base.getSheetByName("入稿用");
     if (!inputSheet) throw new Error("「入稿用」シートが見つかりません。");
@@ -15,6 +21,7 @@ function AdCore() {
 
     const registerAd = String(inputSheet.getRange("B4").getValue()).toLowerCase() === 'true';
     const onlyAd = String(inputSheet.getRange("B5").getValue()).toLowerCase() === 'true';
+    // 入力シートで設定された3つのフラグから実行モードを決定する
     const onlyMaterial = String(inputSheet.getRange("B6").getValue()).toLowerCase() === 'true';
 
     // モード名の判別
@@ -45,6 +52,7 @@ function AdCore() {
       return;
     }
 
+    // 選択されたモードに応じて広告登録や素材追加を実行する
     if (registerAd) {
       const result = registerAdFromSheet();
       Logger.log("registerAdFromSheetの戻り値: " + JSON.stringify(result));
@@ -69,11 +77,13 @@ function AdCore() {
     }
     Logger.log("実行完了");
   } catch (e) {
+    // エラー発生時はログとダイアログを表示し再スローする
     Logger.log("エラー: " + e);
     SpreadsheetApp.getUi().alert("エラー", String(e), SpreadsheetApp.getUi().ButtonSet.OK);
     throw e;
   }
-}
+// 広告登録シートの内容を読み取り広告を登録する。成功時は案件名と広告IDを返す。
+
 function registerAdFromSheet() { 
   const base = SpreadsheetApp.getActiveSpreadsheet();
   const entrySheet = base.getSheetByName("広告登録");
@@ -186,8 +196,10 @@ function registerAdFromSheet() {
     if (selectedTieUp.length !== 1) throw new Error("提携承認設定は1つだけ選択してください。");
 
     // 既存広告チェック（同じ案件名・広告主IDの広告があれば再利用）
+    // API認証用トークン（実運用時には管理画面で取得した値に置き換える）
     const token = 'agqnoournapf:1kvu9dyv1alckgocc848socw';
     const searchUrl = 'https://otonari-asp.com/api/v1/m/promotion/search?name=' + encodeURIComponent(promotionName) + '&advertiser=' + advertiserId;
+    // API認証用トークン（実運用時には管理画面で取得した値に置き換える）
     const searchOptions = {
       method: 'get',
       headers: { 'X-Auth-Token': token },
@@ -277,6 +289,7 @@ function registerAdFromSheet() {
     Logger.log("広告登録処理終了");
   }
 
+  // 広告登録処理を実行した場合のみ結果を返す
   if (registerAd || onlyAd) {
     Logger.log("registerAdFromSheet return: promotionName=" + promotionName + ", promotionId=" + promotionId);
     return { promotionName: promotionName, promotionId: promotionId };

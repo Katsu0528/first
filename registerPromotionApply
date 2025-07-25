@@ -1,8 +1,12 @@
+// registerPromotionApply: 指定された広告IDに対してメディア提携申請を行う
+
 /**
  * 提携申請登録
  * @param {string} promotionId - 広告ID
  */
 function registerPromotionApply(promotionId) {
+  // promotionId を基に既存申請の有無をチェックし、無ければ申請を登録する
+  // API呼び出し用の認証トークン
   const token = 'agqnoournapf:1kvu9dyv1alckgocc848socw';
   // メディアIDを直書き（「株式会社OTONARI　テスト」に該当するIDをここにセットしてください）
   const mediaId = 'mgepkhhm20i8'.trim(); // ←ここを実際のメディアIDに書き換えてください
@@ -67,6 +71,7 @@ function registerPromotionApply(promotionId) {
       throw e;
     }
   }
+  // 登録した申請のレコードまたは検索で見つかったレコードを返す
 
   return applyRecord;
 }
